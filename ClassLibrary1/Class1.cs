@@ -83,6 +83,11 @@ public class FamilyToDWG : IExternalCommand
             return Result.Failed;
         }
 
+        if (!Directory.Exists(@"C:\temp\"))
+        {
+            Directory.CreateDirectory(@"C:\temp\");
+        }
+
         SaveAsOptions options1 = new SaveAsOptions();
         options1.OverwriteExistingFile = true;
         uiDoc.SaveAs(@"C:/temp/new_project.rvt", options1);
@@ -120,9 +125,20 @@ public class FamilyToDWG : IExternalCommand
                     DWGExportOptions options = new DWGExportOptions();
                     //options.FileVersion = (ACADVersion)(3);
 
+                    var collector = new FilteredElementCollector(uiDoc);
+
+                    var viewFamilyType = collector
+                        .OfClass(typeof(ViewFamilyType))
+                        .OfType<ViewFamilyType>()
+                        .FirstOrDefault(x => x.ViewFamily == ViewFamily.ThreeDimensional);
+
                     // Export the active view
                     ICollection<ElementId> views = new List<ElementId>();
-                    views.Add(uiDoc.ActiveView.Id);
+                    tx.Start("ChangeView");
+                    View3D view = View3D.CreateIsometric(uiDoc, viewFamilyType.Id);
+                    tx.Commit();
+                    views.Add(view.Id);
+                    //views.Add(uiDoc.ActiveView.Id);
                     string dwgfilename = famsymbol.Name + ".dwg";
                     uiDoc.Export(@filedir, @dwgfilename, views, options);
 
