@@ -31,7 +31,6 @@ public class FamilyToDWG : IExternalCommand
         string revityear = "2014";
         string subkeystr = "TemplateLocation" + revityear;
         RegistryKey key;
-        RegistryKey subkey;
         
         if (Registry.CurrentUser.OpenSubKey(keystr, true) == null)
         {
@@ -42,13 +41,6 @@ public class FamilyToDWG : IExternalCommand
         else
         {
             key = Registry.CurrentUser.OpenSubKey(keystr, true);
-        }
-
-        subkey = key.OpenSubKey(subkeystr, true);
-
-        if (subkey == null)
-        {
-            key.SetValue(subkeystr, "");
         }
 
         if (key.GetValue(subkeystr, null).ToString() == "" || File.Exists(key.GetValue(subkeystr).ToString()) == false)
@@ -88,6 +80,11 @@ public class FamilyToDWG : IExternalCommand
             Directory.CreateDirectory(@"C:\temp\");
         }
 
+        if (File.Exists(@"C:\temp\new_project.rvt"))
+        {
+            File.Delete(@"C:\temp\new_project.rvt");
+        }
+
         SaveAsOptions options1 = new SaveAsOptions();
         options1.OverwriteExistingFile = true;
         uiDoc.SaveAs(@"C:/temp/new_project.rvt", options1);
@@ -123,6 +120,9 @@ public class FamilyToDWG : IExternalCommand
                     tx.Commit();
 
                     DWGExportOptions options = new DWGExportOptions();
+                    options.FileVersion = (ACADVersion)(2);
+                    options.ExportOfSolids = SolidGeometry.ACIS;
+                    options.HideUnreferenceViewTags = true;
                     //options.FileVersion = (ACADVersion)(3);
 
                     var collector = new FilteredElementCollector(uiDoc);
@@ -136,10 +136,16 @@ public class FamilyToDWG : IExternalCommand
                     ICollection<ElementId> views = new List<ElementId>();
                     tx.Start("ChangeView");
                     View3D view = View3D.CreateIsometric(uiDoc, viewFamilyType.Id);
+                    view.DisplayStyle = DisplayStyle.Shading;
                     tx.Commit();
                     views.Add(view.Id);
                     //views.Add(uiDoc.ActiveView.Id);
                     string dwgfilename = famsymbol.Name + ".dwg";
+                    string dwgfullfilename = filedir + dwgfilename;
+                    if (File.Exists(dwgfullfilename))
+                    {
+                        File.Delete(dwgfullfilename);
+                    }
                     uiDoc.Export(@filedir, @dwgfilename, views, options);
 
                     tx.Start("Delete Family Member");
